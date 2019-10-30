@@ -135,9 +135,6 @@ def updating_weights(weights, X, u, v, j, m):
     denominator = np.array(denominators).sum()
     return nominator / denominator
 
-def updating_fuzzy_membership_degree():
-    pass
-
 def global_adaptative_distance(weights, X, v, k, i):
     """
     weights: weights vector
@@ -154,13 +151,41 @@ def global_adaptative_distance(weights, X, v, k, i):
         distance = weights[j] * (2*(1-kernel))
     return distance
 
-def objective():
-    pass
+def updating_fuzzy_membership_degree(X, v, c, i, k, m, weights):
+    """
+    X: data sample
+    v: centroids
+    c: number of cluster
+    i: cluster position
+    k: sample position
+    m: constant
+    weights: weights vector
+    """
+    result = 0
+    for h in v.shape[0]:
+     numerator = global_adaptative_distance(weights, X, v, k, i)
+     denominator = global_adaptative_distance(weights, X, v, k, h)
+     result += (numerator/denominator)**(1/m-1)
+    result = result**(-1)
+
+    return result
 
 
+def objective(X, u, v, weights, m):
+    """
+    X: data sample
+    u: fuzzy membership degree
+    weights: weights vector
+    m: constant
+    """
+    value = 0
+    for i in v.shape[0]:
+        parcial = 0
+        for k in X.shape[0]:
+            parcial += (u[i,k]**m) * global_adaptative_distance(weights, X, v, k, i)
+        value += parcial
 
-
-
+    return value
 
 
 if __name__== "__main__" :
