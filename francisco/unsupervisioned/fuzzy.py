@@ -27,14 +27,18 @@ def fuzzy_model(X):
     t=1
     objective_value_old=0
     objective_value_new=0
+    membership = initializing_membership_degree(c, n)
+    centroids = initializing_centroids(X, c)
+    weights = initializing_weights(p)
 
-    while( not(objective_value_new - objective_value_old <= e) or not(t>T)):
-        updating_centroid()
-        updating_weights()
-        updating_fuzzy_membership_degree()
+    while( not(objective_value_new - objective_value_old <= e or t>T)):
+        centroids = updating_centroids(membership, X, m, centroids)
+        weights = updating_weights(weights, X, membership, centroids, m)
+        membership = updating_fuzzy_memberships_degree(membership, X, centroids, weights, m)
         objective_value_old = objective_value_new
         objective_value_new = objective()
         t += 1
+        print(objective_value_new)
 
 # Random initializing the fuzzy membership degrees
 def initializing_membership_degree(c, n):
@@ -60,7 +64,7 @@ def initializing_centroids(X, c):
     X: data sample
     c: number of clusters
     """
-    centroids = np.array([random.choice(X) for x in range(c)])
+    centroids = np.array([random.choice(X) for _ in range(c)])
     return centroids
 
 # Calculating variance through quantile
@@ -73,12 +77,24 @@ def two_sigma_square_for_dimension(X, j):
     for k in range(X.shape[0]):
         for l in range(X.shape[1]):
             if not(l==k):
-                difference = euclidean_distances(X[k,j], X[k,l])**2
+                difference = euclidean_distances(X[k,j].reshape(-1, 1),
+                                                 X[k,l].reshape(-1, 1))**2
                 result.append(difference)
     result = np.array(sorted(result))
     mean = np.mean([np.quantile(result,0.1),np.quantile(result,0.9)])
-    return mean
+    return float(mean)
 
+def updating_centroids(u, X, m, v):
+    """
+    u: fuzzy membership degree
+    X: data sample
+    m: constant
+    v: centroid
+    """
+    for i in range(v.shape[0]):
+        for j in range(v.shape[1]):
+            v[i,j] = updating_centroid(i, j, u, X, m, v)
+    return v
 
 # v_ij = sum(u_ik*K(x_kj, v_ij)*x_kj)/sum(u_ik*K(x_kj, v_ij))
 def updating_centroid(i, j, u, X, m, v):
@@ -94,21 +110,36 @@ def updating_centroid(i, j, u, X, m, v):
     denominators = []
     quantile = 1/two_sigma_square_for_dimension(X, j)
     for k in range(X.shape[0]):
-        kernel = rbf_kernel(X[k, j], v[i, j], gamma=quantile)
+        kernel = rbf_kernel(X[k, j].reshape(-1, 1),
+                            v[i, j].reshape(-1, 1), gamma=quantile)
         nominators.append(
                 (u[i,k]**m) * kernel * X[k,j])
         denominators.append(
                 (u[i,k]**m) * kernel)
-
+    nominators = np.array(nominators)
+    denominators = np.array(denominators)
     return nominators.sum()/denominators.sum()
 
-def updating_weights(weights, X, u, v, j, m):
+def updating_weights(weights, X, u, v, m):
     """
     weights: weights vector
     X: data sample
     u: fuzzy membership degree
     v: centroid
+    m: constant
+    """
+    for j in range(weights.shape[0]):
+        weights[j] = updating_weight(j, weights, X, u, v, m)
+    return weights
+
+def updating_weight(j, weights, X, u, v, m):
+    """
     j: weight vector dimension to update
+    weights: weights vector
+    X: data sample
+    u: fuzzy membership degree
+    v: centroid
+    m: constant
     """
     p=weights.shape[0]
     nominators = []
@@ -118,7 +149,8 @@ def updating_weights(weights, X, u, v, j, m):
         for i in range(v.shape[0]):
             k_sum = 0
             for k in range(X.shape[0]):
-                kernel = rbf_kernel(X[k, l], v[i, l], gamma=quantile)
+                kernel = rbf_kernel(X[k, l].reshape(-1, 1),
+                                    v[i, l].reshape(-1, 1), gamma=quantile)
                 k_sum += (u[i,k]**m) * (2*(1-kernel))
             c_sum += k_sum
         nominators.append(c_sum)
@@ -128,11 +160,12 @@ def updating_weights(weights, X, u, v, j, m):
     for i in range(v.shape[0]):
             k_sum = 0
             for k in range(X.shape[0]):
-                kernel = rbf_kernel(X[k, j], v[i, j], gamma=quantile)
+                kernel = rbf_kernel(X[k, j].reshape(-1, 1),
+                                    v[i, j].reshape(-1, 1), gamma=quantile)
                 k_sum += (u[i,k]**m) * (2*(1-kernel))
             denominators.append(k_sum)
-    nominator = np.array(nominators).prod()**1/p
-    denominator = np.array(denominators).sum()
+    nominator = float(np.array(nominators).prod()**1/float(p))
+    denominator = float(np.array(denominators).sum())
     return nominator / denominator
 
 def global_adaptative_distance(weights, X, v, k, i):
@@ -147,26 +180,39 @@ def global_adaptative_distance(weights, X, v, k, i):
     distance = 0
     for j in range(p):
         quantile = 1/two_sigma_square_for_dimension(X, j)
-        kernel = rbf_kernel(X[k, j], v[i, j], gamma=quantile)
+        kernel = rbf_kernel(X[k, j].reshape(-1, 1),
+                            v[i, j].reshape(-1, 1), gamma=quantile)
         distance = weights[j] * (2*(1-kernel))
     return distance
 
-def updating_fuzzy_membership_degree(X, v, c, i, k, m, weights):
+def updating_fuzzy_memberships_degree(u, X, v, weights, m):
     """
+    u: membership degree
     X: data sample
     v: centroids
-    c: number of cluster
-    i: cluster position
-    k: sample position
     m: constant
     weights: weights vector
     """
-    result = 0
-    for h in v.shape[0]:
+    for i in range(u.shape[0]):
+        for k in range(u.shape[1]):
+            u[i,k] = updating_fuzzy_membership_degree(i, k, X, v, weights, m)
+    return u
+
+def updating_fuzzy_membership_degree(i, k, X, v, weights, m):
+    """
+    i: cluster position
+    k: sample position
+    X: data sample
+    v: centroids
+    m: constant
+    weights: weights vector
+    """
+    result = 0.0
+    for h in range(v.shape[0]):
      numerator = global_adaptative_distance(weights, X, v, k, i)
      denominator = global_adaptative_distance(weights, X, v, k, h)
      result += (numerator/denominator)**(1/m-1)
-    result = result**(-1)
+    result = result**(-1.0)
 
     return result
 
@@ -191,3 +237,4 @@ def objective(X, u, v, weights, m):
 if __name__== "__main__" :
     for X in importing_data():
         fuzzy_model(X)
+    print("FINISHED")
