@@ -12,7 +12,9 @@ from sklearn.metrics.pairwise import euclidean_distances, rbf_kernel
 # Importing the dataset
 def importing_data():
     dataset = pd.read_csv('../data/segmentation_data.csv')
-    shape = dataset.iloc[:, 1:10].values
+    shape1 = dataset.iloc[:, 1:3].values
+    shape2 = dataset.iloc[:, 4:10].values
+    shape = np.concatenate((shape1, shape2),axis=1)
     rgb = dataset.iloc[:, 10:20].values
     return shape, rgb
 
@@ -31,7 +33,7 @@ def fuzzy_model(X):
     centroids = initializing_centroids(X, c)
     weights = initializing_weights(p)
 
-    while( not(objective_value_new - objective_value_old <= e or t>T)):
+    while( not(objective_value_new - objective_value_old <= e) or not(t>T)):
         centroids = updating_centroids(membership, X, m, centroids)
         weights = updating_weights(weights, X, membership, centroids, m)
         membership = updating_fuzzy_memberships_degree(membership, X, centroids, weights, m)
@@ -77,8 +79,8 @@ def two_sigma_square_for_dimension(X, j):
     for k in range(X.shape[0]):
         for l in range(X.shape[1]):
             if not(l==k):
-                difference = euclidean_distances(X[k,j].reshape(-1, 1),
-                                                 X[k,l].reshape(-1, 1))**2
+                difference = np.power(euclidean_distances(X[k,j].reshape(-1, 1),
+                                                 X[k,l].reshape(-1, 1)), 2)
                 result.append(difference)
     result = np.array(sorted(result))
     mean = np.mean([np.quantile(result,0.1),np.quantile(result,0.9)])
@@ -179,10 +181,10 @@ def global_adaptative_distance(weights, X, v, k, i):
     p = weights.shape[0]
     distance = 0
     for j in range(p):
-        quantile = 1/two_sigma_square_for_dimension(X, j)
+        quantile = np.divide(1, two_sigma_square_for_dimension(X, j))
         kernel = rbf_kernel(X[k, j].reshape(-1, 1),
                             v[i, j].reshape(-1, 1), gamma=quantile)
-        distance = weights[j] * (2*(1-kernel))
+        distance = np.multiply(weights[j], np.multiply(2, 1-kernel))
     return distance
 
 def updating_fuzzy_memberships_degree(u, X, v, weights, m):
@@ -196,6 +198,7 @@ def updating_fuzzy_memberships_degree(u, X, v, weights, m):
     for i in range(u.shape[0]):
         for k in range(u.shape[1]):
             u[i,k] = updating_fuzzy_membership_degree(i, k, X, v, weights, m)
+
     return u
 
 def updating_fuzzy_membership_degree(i, k, X, v, weights, m):
@@ -208,11 +211,11 @@ def updating_fuzzy_membership_degree(i, k, X, v, weights, m):
     weights: weights vector
     """
     result = 0.0
+    numerator = global_adaptative_distance(weights, X, v, k, i)
     for h in range(v.shape[0]):
-     numerator = global_adaptative_distance(weights, X, v, k, i)
      denominator = global_adaptative_distance(weights, X, v, k, h)
-     result += (numerator/denominator)**(1/m-1)
-    result = result**(-1.0)
+     result += np.power(np.divide(numerator,denominator), np.divide(1,(m-1)))
+    result = np.divide(1.0, result)
 
     return result
 
@@ -228,7 +231,7 @@ def objective(X, u, v, weights, m):
     for i in v.shape[0]:
         parcial = 0
         for k in X.shape[0]:
-            parcial += (u[i,k]**m) * global_adaptative_distance(weights, X, v, k, i)
+            parcial += np.multiply(np.power(u[i,k], m), global_adaptative_distance(weights, X, v, k, i))
         value += parcial
 
     return value
