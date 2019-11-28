@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Importing the libraries
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
@@ -17,7 +16,7 @@ class KNN:
         dataset = pd.read_csv('../data/segmentation_data.csv')
         dataset_test = pd.read_csv('../data/segmentation_test.csv')
         
-        X_shape = dataset.iloc[:, 1:10].values
+        X_shape = dataset.iloc[:, 1:10].drop(['REGION-PIXEL-COUNT'], axis=1).values
         X_rgb = dataset.iloc[:, 10:20].values
         y = dataset.iloc[:, 0].values
         
@@ -33,7 +32,7 @@ class KNN:
         X_rgb = sc_rgb_X.fit_transform(X_rgb)
         
         # Importing the validating dataset
-        X_shape_val = dataset_test.iloc[:, 1:10]
+        X_shape_val = dataset_test.iloc[:, 1:10].drop(['REGION-PIXEL-COUNT'], axis=1).values
         X_rgb_val = dataset_test.iloc[:, 10:20]
         y_val = dataset_test.iloc[:, 0]
         
@@ -65,24 +64,18 @@ class KNN:
         knn_rgb = grid_rgb.best_estimator_
         
         shape_proba = []
-        # rskf_shape_scores = []
         for train_index, test_index in rskf.split(X_shape, y):
             knn_shape.fit(X_shape[train_index], y[train_index])
             y_pred = knn_shape.predict_proba(X_shape[test_index])
             shape_proba.append(y_pred)
-            # rskf_shape_scores.append(accuracy_score(y[test_index], y_pred))
         shape_proba = np.array(shape_proba)
-        # print(np.mean(rskf_shape_scores))
         
         rgb_proba = []
-        # rskf_rgb_scores = []
         for train_index, test_index in rskf.split(X_rgb, y):
             knn_rgb.fit(X_rgb[train_index], y[train_index])
             y_pred = knn_rgb.predict_proba(X_rgb[test_index])
             rgb_proba.append(y_pred)
-            # rskf_rgb_scores.append(accuracy_score(y[test_index], y_pred))
         rgb_proba = np.array(rgb_proba)
-        # print(np.mean(rskf_rgb_scores))
         
         sum_rule = np.zeros([300, rgb_proba.shape[1]])
         for j in range(300):
@@ -111,21 +104,7 @@ class KNN:
         
         return knn_shape, knn_rgb, accuracy_means
 
-    def predict(knn_shape, knn_rgb, X_shape_val, X_rgb_val, y_val):
-        # Predicting the Test set Results using the validating dataset
-        y_shape_pred = knn_shape.predict(X_shape_val)
-        y_rgb_pred = knn_rgb.predict(X_rgb_val)
-        
-        # Calculating the metrics
-        shape_cm = confusion_matrix(y_val, y_shape_pred)
-        print(shape_cm)
-        print(accuracy_score(y_val, y_shape_pred))
-        print(classification_report(y_val, y_shape_pred))
-        rgb_cm = confusion_matrix(y_val, y_rgb_pred)
-        print(rgb_cm)
-        print(accuracy_score(y_val, y_rgb_pred))
-        print(classification_report(y_val, y_rgb_pred))
-        
+    def predict(knn_shape, knn_rgb, X_shape_val, X_rgb_val):        
         # Sum Rule max1_r[(1-L)P(wr) + Pknnshape(wr|Xk) + Pknnviz(wr|Xk)]
         # The P(wr) is the same for any class, so it is irrelevant
         all_scores_prob = np.zeros([X_rgb_val.shape[0], 7, 2])
@@ -138,27 +117,41 @@ class KNN:
             max_sum = np.amax(np.sum(all_scores_prob[i,:,:], axis=1))
             # Find the class that has the max sum
             y_pred_sum.append(np.where(np.sum(all_scores_prob[i,:,:], axis=1)==max_sum)[0][0])
-            
-        y_pred_sum=np.array(y_pred_sum)
         
-        # Calculating the classifiers combination dataset
-        print(confusion_matrix(y_val,y_pred_sum))
-        print(accuracy_score(y_val, y_pred_sum))
-        print(classification_report(y_val, y_pred_sum))
-        
-        accuracy = accuracy_score(y_val, y_pred_sum)
-        error = 1 - accuracy
-        # Wilson Score Confidence Interval
-        # Constants values are 1.64 (90%) 1.96 (95%) 2.33 (98%) 2.58 (99%)
-        const = 1.96
-        n = X_rgb_val.shape[0]
-        std = const * np.sqrt( (error * (1 - error)) / n)
-        ci = (error - std, error + std)
-        
-        return y_pred_sum
-
+        return np.array(y_pred_sum)
+    
+    def predict_individual(knn_shape, knn_rgb, X_shape_val, X_rgb_val):
+        y_shape_pred = knn_shape.predict(X_shape_val)
+        y_rgb_pred = knn_rgb.predict(X_rgb_val)
+        return y_shape_pred, y_rgb_pred
+    
 if __name__ == "__main__":
     
     training, validation = KNN.preprocessing()
     knn_shape_clf, knn_rgb_clf, knn_accuracy_means = KNN.train(training[0],training[1],training[2])
-    knn_pred = KNN.predict(knn_shape_clf, knn_rgb_clf, validation[0], validation[1], validation[2])
+    knn_pred = KNN.predict(knn_shape_clf, knn_rgb_clf, validation[0], validation[1])
+    
+    shape_pred, rgb_pred = KNN.predict(knn_shape_clf, knn_rgb_clf, validation[0], validation[1])
+    
+    # Calculating the metrics
+    print("-------- KNN Shape--------")
+    print(confusion_matrix(validation[2], shape_pred))
+    print(accuracy_score(validation[2], shape_pred))
+    print(classification_report(validation[2], shape_pred))
+    print("-------- KNN RGB--------")
+    print(confusion_matrix(validation[2], rgb_pred))
+    print(accuracy_score(validation[2], rgb_pred))
+    print(classification_report(validation[2], rgb_pred))
+    
+    print("-------- KNN Sum--------")
+    print(confusion_matrix(validation[2],knn_pred))
+    print(classification_report(validation[2], knn_pred))
+    knn_accuracy = accuracy_score(validation[2], knn_pred)
+    print(knn_accuracy)
+    # Wilson Score Confidence Interval
+    # Constants values are 1.64 (90%) 1.96 (95%) 2.33 (98%) 2.58 (99%)
+    const = 1.96
+    n = training[1].shape[0]
+    std = const * np.sqrt( (knn_accuracy * (1 - knn_accuracy)) / n)
+    knn_ci = ((knn_accuracy - std), (knn_accuracy + std))
+    print(knn_ci)
