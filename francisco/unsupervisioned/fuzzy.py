@@ -116,19 +116,6 @@ def updating_weights(weights, X, u, v, m, variances):
     v: centroid
     m: constant
     """
-    for j in range(weights.shape[0]):
-        weights[j] = updating_weight(j, weights, X, u, v, m, variances)
-    return weights
-
-def updating_weight(j, weights, X, u, v, m, variances):
-    """
-    j: weight vector dimension to update
-    weights: weights vector
-    X: data sample
-    u: fuzzy membership degree
-    v: centroid
-    m: constant
-    """
     p=weights.shape[0]
     nominators = []
     for l in range(p):
@@ -143,7 +130,21 @@ def updating_weight(j, weights, X, u, v, m, variances):
                                      np.multiply(2, 1-kernel))
             c_sum += k_sum
         nominators.append(c_sum)
+    nominator = np.power(np.array(nominators).prod(), 1/float(p))
 
+    for j in range(weights.shape[0]):
+        weights[j] = updating_weight(j, weights, X, u, v, m, variances, nominator)
+    return weights
+
+def updating_weight(j, weights, X, u, v, m, variances, nominator):
+    """
+    j: weight vector dimension to update
+    weights: weights vector
+    X: data sample
+    u: fuzzy membership degree
+    v: centroid
+    m: constant
+    """
     denominator = 0.0
     quantile = np.divide(1, variances[j])
     for i in range(v.shape[0]):
@@ -155,7 +156,6 @@ def updating_weight(j, weights, X, u, v, m, variances):
                                      np.multiply(2, 1-kernel))
             denominator += k_sum
             
-    nominator = np.power(np.array(nominators).prod(), 1/float(p))
     return nominator / denominator
 
 def global_adaptative_distance(weights, X, v, k, i, variances):
@@ -255,7 +255,7 @@ def fuzzy_model(X):
         # print("Membership Sum:", membership_sum)
         objective_value_old = objective_value_new
         objective_value_new = objective(X, membership, centroids, weights, m, variances)
-        # print(t)
+        print(t)
         t += 1
         # print("Objective:", objective_value_new)
      
@@ -275,25 +275,26 @@ if __name__== "__main__" :
     rgb_weights = np.array([])
     rgb_centroids = np.array([])
     
-    for i in range(100):
-        start = datetime.now()
-        # Shape view
-        membership, weights, centroids, objective_value = fuzzy_model(X_shape)
-        if objective_value < shape_objective:
-            shape_objective = objective_value
-            shape_membership = membership
-            shape_weights = weights
-            shape_centroids = centroids
-            
-            # RGB view
-        membership, weights, centroids, objective_value = fuzzy_model(X_rgb)
-        if objective_value < rgb_objective:
-            rgb_objective = objective_value
-            rgb_membership = membership
-            rgb_weights = weights
-            rgb_centroids = centroids
-        time_taken = datetime.now() - start
-        print("Round:", i, "-", "Time Spent:", time_taken)
+    i=0
+    # for i in range(100):
+    start = datetime.now()
+    # Shape view
+    membership, weights, centroids, objective_value = fuzzy_model(X_shape)
+    if objective_value < shape_objective:
+        shape_objective = objective_value
+        shape_membership = membership
+        shape_weights = weights
+        shape_centroids = centroids
+        
+        # RGB view
+    membership, weights, centroids, objective_value = fuzzy_model(X_rgb)
+    if objective_value < rgb_objective:
+        rgb_objective = objective_value
+        rgb_membership = membership
+        rgb_weights = weights
+        rgb_centroids = centroids
+    time_taken = datetime.now() - start
+    print("Round:", i, "-", "Time Spent:", time_taken)
     
     print("------------ SHAPE ------------")
     print("SHAPE minimum objective value:", shape_objective)
