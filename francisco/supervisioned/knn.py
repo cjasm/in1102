@@ -131,7 +131,7 @@ if __name__ == "__main__":
     knn_shape_clf, knn_rgb_clf, knn_accuracy_means = KNN.train(training[0],training[1],training[2])
     knn_pred = KNN.predict(knn_shape_clf, knn_rgb_clf, validation[0], validation[1])
     
-    shape_pred, rgb_pred = KNN.predict(knn_shape_clf, knn_rgb_clf, validation[0], validation[1])
+    shape_pred, rgb_pred = KNN.predict_individual(knn_shape_clf, knn_rgb_clf, validation[0], validation[1])
     
     # Calculating the metrics
     print("-------- KNN Shape--------")
