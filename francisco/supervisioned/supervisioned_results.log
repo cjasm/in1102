@@ -1,0 +1,57 @@
+-------- Gaussian --------
+Confusion Matrix
+[[147 147   0   0   0   0   6]
+ [  0 242  30   0  22   0   6]
+ [  1 200  77   0   1   0  21]
+ [  0   0   0 296   1   0   3]
+ [  0  19  21   0 260   0   0]
+ [  0   0   0   0   0 300   0]
+ [  0 230  17   0   0   0  53]]
+Classification Report
+              precision    recall  f1-score   support
+
+           0       0.99      0.49      0.66       300
+           1       0.29      0.81      0.43       300
+           2       0.53      0.26      0.35       300
+           3       1.00      0.99      0.99       300
+           4       0.92      0.87      0.89       300
+           5       1.00      1.00      1.00       300
+           6       0.60      0.18      0.27       300
+
+   micro avg       0.65      0.65      0.65      2100
+   macro avg       0.76      0.65      0.65      2100
+weighted avg       0.76      0.65      0.65      2100
+
+Validation Accuracy: 0.6547619047619048
+Ponctual Estimation 0.5857142857142856
+Confidence Interval: (0.519088965202236, 0.6523396062263352)
+-------- KNN --------
+Confusion Matrix
+[[295   0   0   0   0   0   5]
+ [  4 211   3   0  67   0  15]
+ [ 11   6 224   0   2   0  57]
+ [  1   0   3 296   0   0   0]
+ [  0  41   0  16 243   0   0]
+ [  3   0   1   0   0 296   0]
+ [  6  33  52   0   0   1 208]]
+Classification Report
+              precision    recall  f1-score   support
+
+           0       0.92      0.98      0.95       300
+           1       0.73      0.70      0.71       300
+           2       0.79      0.75      0.77       300
+           3       0.95      0.99      0.97       300
+           4       0.78      0.81      0.79       300
+           5       1.00      0.99      0.99       300
+           6       0.73      0.69      0.71       300
+
+   micro avg       0.84      0.84      0.84      2100
+   macro avg       0.84      0.84      0.84      2100
+weighted avg       0.84      0.84      0.84      2100
+
+Validation Accuracy: 0.8442857142857143
+Ponctual Estimation 0.8285714285714286
+Confidence Interval: (0.7775969251407918, 0.8795459320020654)
+-------- Gaussian x KNN --------
+Wilcoxon Statistics=0.000, p=0.0000017
+Different distribution (reject H0)
